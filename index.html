@@ -548,14 +548,19 @@ function initFirebase(){
 
     // Real-time listener — fires on first load AND whenever any user saves
     db.ref("/matrix").on("value", snapshot => {
-      if(_syncing) return; // skip echo of our own save
-      const data = snapshot.val();
+      if(_syncing) return;
+      const raw = snapshot.val();
+      if(!raw) return;
+      // Decode — new format wraps everything as a JSON string to avoid Firebase key restrictions
+      let data;
+      try { data = raw.json ? JSON.parse(raw.json) : raw; } catch(e){ return; }
       if(!data) return;
+      // Only update if incoming data is strictly newer
+      if(STATE.lastSaved && data.lastSaved && data.lastSaved <= STATE.lastSaved) return;
       STATE.team       = (data.team       && data.team.length)       ? data.team       : STATE.team;
       STATE.categories = (data.categories && data.categories.length) ? data.categories : STATE.categories;
       STATE.skills     = data.skills     || {};
       STATE.lastSaved  = data.lastSaved  || null;
-      // Also cache locally for offline fallback
       localStorage.setItem(LS_KEY, JSON.stringify({
         team:STATE.team, categories:STATE.categories,
         skills:STATE.skills, lastSaved:STATE.lastSaved, version:STATE.version
@@ -601,16 +606,24 @@ function saveState(){
   if(db){
     _syncing = true;
     updateSyncBadge("saving");
-    db.ref("/matrix").set(payload)
-      .then(()=>{
-        updateSyncBadge("synced");
-        setTimeout(()=>{ _syncing = false; }, 500);
-      })
-      .catch(err=>{
-        console.warn("Firebase write failed:", err);
-        _syncing = false;
-        updateSyncBadge("offline");
-      });
+    // Store as JSON string — avoids Firebase key restrictions (/, ., #, $, [], etc in skill names)
+    const fbPayload = { json: JSON.stringify(payload), lastSaved: payload.lastSaved };
+    try {
+      db.ref("/matrix").set(fbPayload)
+        .then(()=>{
+          updateSyncBadge("synced");
+          setTimeout(()=>{ _syncing = false; }, 2000);
+        })
+        .catch(err=>{
+          console.warn("Firebase write failed:", err);
+          _syncing = false;
+          updateSyncBadge("offline");
+        });
+    } catch(err){
+      console.warn("Firebase set threw:", err);
+      _syncing = false;
+      updateSyncBadge("offline");
+    }
   }
   publishKPI();
 }
@@ -754,10 +767,18 @@ function setLevel(personId,skill,level){
   saveState();
 }
 
-function cycleLevel(personId,skill){
-  const cur = getLevel(personId,skill);
-  setLevel(personId, skill, (cur+1)%5);
-  renderAll();
+function cycleLevel(personId, skill, badgeEl){
+  const next = (getLevel(personId, skill) + 1) % 5;
+  setLevel(personId, skill, next);
+  // Update the clicked element directly — instant, no page-tracking dependency
+  if(badgeEl){
+    badgeEl.className = `lvl lv${next} editable`;
+    badgeEl.setAttribute("data-person", personId);
+    badgeEl.setAttribute("data-skill", encodeURIComponent(skill));
+    badgeEl.title = LEVEL_DEFS[next].label;
+    badgeEl.textContent = next === 0 ? "—" : next;
+  }
+  renderAll(); // updates stats, percentages, KPI strip
 }
 
 function getAllSkillNames(){
@@ -1353,7 +1374,7 @@ document.addEventListener("click", e => {
   if (badge) {
     const personId = badge.dataset.person;
     const skill    = decodeURIComponent(badge.dataset.skill || "");
-    if (personId && skill) cycleLevel(personId, skill);
+    if (personId && skill) cycleLevel(personId, skill, badge);
     return;
   }
   // Person card click — open detail
