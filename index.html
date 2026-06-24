@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystal Fountains — PE Skills & Training Matrix · v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<!-- Firebase compat SDK (loaded from Google's CDN — no install needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --navy:#042C53; --navy-mid:#185FA5; --navy-lt:#378ADD; --navy-pale:#85B7EB;
+    --green:#04342C; --green-mid:#085041; --green-lt:#1D9E75; --green-pale:#9FE1CB;
+    --amber:#412402; --amber-lt:#EF9F27; --amber-pale:#FAC775;
+    --indigo:#26215C; --indigo-lt:#7F77DD; --indigo-pale:#CECBF6;
+    --red-dark:#501313; --red-lt:#E24B4A; --red-pale:#F7C1C1;
+    --gray-dk:#2C2C2A; --gray-mid:#444441; --gray-lt:#888780; --gray-pale:#D3D1C7;
+    --white:#ffffff; --page-bg:#111110; --card-bg:#1a1a18;
+    --lv0-bg:#1a1a18; --lv0-border:#444441; --lv0-text:#888780;
+    --lv1-bg:#3a1a1a; --lv1-border:#E24B4A; --lv1-text:#F7C1C1;
+    --lv2-bg:#2e1e00; --lv2-border:#EF9F27; --lv2-text:#FAC775;
+    --lv3-bg:#0a2a20; --lv3-border:#1D9E75; --lv3-text:#9FE1CB;
+    --lv4-bg:#042C53; --lv4-border:#378ADD; --lv4-text:#85B7EB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--page-bg);color:var(--white);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+  /* ── NAV ─────────────────────────────────────────── */
+  .top-nav{position:sticky;top:0;z-index:200;background:#0a0a09;border-bottom:1px solid var(--gray-mid);display:flex;align-items:center;padding:0 20px;gap:0;flex-wrap:wrap;}
+  .nav-logo{font-size:13px;font-weight:700;color:var(--green-pale);padding:14px 16px 14px 0;border-right:1px solid var(--gray-mid);margin-right:8px;white-space:nowrap;letter-spacing:.04em;}
+  .nav-logo span{color:var(--amber-lt);}
+  .tab-btn{background:none;border:none;color:var(--gray-lt);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:16px 14px;cursor:pointer;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;}
+  .tab-btn:hover{color:var(--white);}
+  .tab-btn.active{color:var(--white);border-bottom-color:var(--amber-lt);}
+  .nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:5px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap;}
+  .btn:hover{opacity:.85;}
+  .btn-ghost{background:transparent;border:1px solid var(--gray-mid);color:var(--gray-pale);}
+  .btn-amber{background:var(--amber-lt);color:#0a0a09;}
+  .btn-green{background:var(--green-lt);color:#fff;}
+  .btn-navy{background:var(--navy-lt);color:#fff;}
+  .btn-red{background:var(--red-lt);color:#fff;}
+  .btn-sm{padding:5px 10px;font-size:11px;}
+  .edit-badge{background:rgba(239,159,39,0.15);border:1px solid var(--amber-lt);color:var(--amber-lt);padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.05em;}
+  .save-status{font-size:11px;color:var(--gray-lt);font-family:'DM Mono',monospace;}
+
+  /* ── PAGES ───────────────────────────────────────── */
+  .page{display:none;padding:20px;}
+  .page.active{display:block;}
+
+  /* ── CARDS / PANELS ──────────────────────────────── */
+  .card{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:8px;overflow:hidden;}
+  .card-header{padding:12px 16px;border-bottom:1px solid var(--gray-mid);display:flex;align-items:center;justify-content:space-between;}
+  .card-header h3{font-size:13px;font-weight:700;color:var(--white);letter-spacing:.05em;text-transform:uppercase;}
+  .card-body{padding:16px;}
+
+  /* ── KPI METRICS STRIP ───────────────────────────── */
+  .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+  .kpi-tile{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;}
+  .kpi-tile::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .kpi-tile.navy::before{background:var(--navy-lt);}
+  .kpi-tile.green::before{background:var(--green-lt);}
+  .kpi-tile.amber::before{background:var(--amber-lt);}
+  .kpi-tile.red::before{background:var(--red-lt);}
+  .kpi-tile.indigo::before{background:var(--indigo-lt);}
+  .kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-lt);margin-bottom:4px;}
+  .kpi-value{font-size:28px;font-weight:900;font-family:'DM Mono',monospace;line-height:1;}
+  .kpi-sub{font-size:11px;color:var(--gray-lt);margin-top:3px;}
+  .kpi-tile.navy .kpi-value{color:var(--navy-pale);}
+  .kpi-tile.green .kpi-value{color:var(--green-pale);}
+  .kpi-tile.amber .kpi-value{color:var(--amber-pale);}
+  .kpi-tile.red .kpi-value{color:var(--red-pale);}
+  .kpi-tile.indigo .kpi-value{color:var(--indigo-pale);}
+
+  /* ── SKILL LEVEL BADGE ───────────────────────────── */
+  .lvl{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:5px;font-size:11px;font-weight:800;border:1px solid;cursor:default;transition:transform .1s,box-shadow .1s;user-select:none;flex-shrink:0;}
+  .lvl.editable{cursor:pointer;}
+  .lvl.editable:hover{transform:scale(1.2);box-shadow:0 0 8px rgba(255,255,255,.3);}
+  .lvl.lv0{background:var(--lv0-bg);border-color:var(--lv0-border);color:var(--lv0-text);}
+  .lvl.lv1{background:var(--lv1-bg);border-color:var(--lv1-border);color:var(--lv1-text);}
+  .lvl.lv2{background:var(--lv2-bg);border-color:var(--lv2-border);color:var(--lv2-text);}
+  .lvl.lv3{background:var(--lv3-bg);border-color:var(--lv3-border);color:var(--lv3-text);}
+  .lvl.lv4{background:var(--lv4-bg);border-color:var(--lv4-border);color:var(--lv4-text);}
+  .lvl-lg{width:36px;height:36px;font-size:14px;border-radius:6px;}
+
+  /* ── MATRIX TABLE ────────────────────────────────── */
+  .matrix-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .matrix-table{border-collapse:collapse;width:100%;min-width:900px;}
+  .matrix-table th,.matrix-table td{border:1px solid var(--gray-mid);}
+  .matrix-table th{background:#0d0d0c;font-size:11px;font-weight:700;color:var(--gray-pale);padding:8px 10px;text-align:center;letter-spacing:.04em;position:sticky;top:0;z-index:10;}
+  .matrix-table th.skill-col{text-align:left;min-width:220px;max-width:260px;position:sticky;left:0;z-index:11;background:#0d0d0c;}
+  .matrix-table td{padding:6px 8px;text-align:center;background:var(--card-bg);}
+  .matrix-table td.skill-name{text-align:left;font-size:12px;color:var(--gray-pale);padding:6px 12px;position:sticky;left:0;background:var(--card-bg);border-right:2px solid var(--gray-mid);white-space:nowrap;}
+  .matrix-table tr:hover td{background:#1f1f1d;}
+  .matrix-table tr:hover td.skill-name{background:#1f1f1d;}
+  .cat-row{background:#0a0a09 !important;}
+  .cat-row td{padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--amber-lt);border-bottom:1px solid var(--amber-lt);border-top:2px solid var(--gray-mid);}
+  .cat-row td.skill-name{position:sticky;left:0;background:#0a0a09;}
+  .team-avg{font-size:12px;font-weight:800;font-family:'DM Mono',monospace;}
+  .avg-0{color:var(--gray-lt);}
+  .avg-1{color:var(--red-pale);}
+  .avg-2{color:var(--amber-pale);}
+  .avg-3{color:var(--green-pale);}
+  .avg-4{color:var(--navy-pale);}
+
+  /* ── PERSON CARDS ────────────────────────────────── */
+  .person-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+  .person-card{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color .15s,transform .15s;}
+  .person-card:hover{border-color:var(--navy-lt);transform:translateY(-2px);}
+  .person-card-head{background:var(--navy);padding:14px 16px;display:flex;align-items:center;gap:12px;}
+  .avatar{width:44px;height:44px;border-radius:8px;background:var(--amber-lt);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#0a0a09;flex-shrink:0;}
+  .person-name{font-size:15px;font-weight:700;color:var(--white);}
+  .person-role{font-size:11px;color:var(--navy-pale);}
+  .person-card-body{padding:12px 16px;}
+  .progress-bar-wrap{background:#0a0a09;border-radius:4px;height:6px;margin:8px 0;}
+  .progress-bar{height:6px;border-radius:4px;transition:width .5s ease;}
+  .progress-bar.green{background:var(--green-lt);}
+  .progress-bar.amber{background:var(--amber-lt);}
+  .progress-bar.red{background:var(--red-lt);}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--gray-lt);}
+  .stat-val{font-weight:700;font-family:'DM Mono',monospace;color:var(--white);}
+
+  /* ── PERSON DETAIL ───────────────────────────────── */
+  .person-detail-header{background:var(--navy);border-radius:8px;padding:20px 24px;margin-bottom:12px;display:flex;align-items:center;gap:16px;}
+  .avatar-lg{width:60px;height:60px;border-radius:10px;background:var(--amber-lt);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0a0a09;flex-shrink:0;}
+  .cat-scores-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px;}
+  .cat-score-tile{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:6px;padding:10px 12px;}
+  .cat-score-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-lt);margin-bottom:6px;}
+  .cat-score-bar-wrap{background:#0a0a09;border-radius:3px;height:5px;margin-bottom:5px;}
+  .cat-score-pct{font-size:18px;font-weight:900;font-family:'DM Mono',monospace;}
+
+  /* ── CATEGORY SECTION ────────────────────────────── */
+  .cat-section{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+  .cat-section-header{background:#0d0d0c;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--gray-mid);}
+  .cat-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--amber-lt);}
+  .cat-section-meta{font-size:11px;color:var(--gray-lt);}
+  .cat-skills-list{padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;}
+  .skill-chip{display:inline-flex;align-items:center;gap:6px;background:#0d0d0c;border:1px solid var(--gray-mid);border-radius:5px;padding:4px 10px;font-size:12px;}
+  .skill-chip-name{color:var(--gray-pale);}
+  .skill-chip-del{color:var(--red-lt);cursor:pointer;font-size:14px;font-weight:900;margin-left:4px;line-height:1;}
+  .skill-chip-del:hover{color:#ff6b6b;}
+
+  /* ── DASHBOARD SECTIONS ──────────────────────────── */
+  .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .dash-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-lt);margin-bottom:10px;}
+  .top-gap-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-mid);}
+  .top-gap-row:last-child{border-bottom:none;}
+  .gap-skill{font-size:12px;color:var(--white);flex:1;}
+  .gap-person{font-size:11px;color:var(--gray-lt);}
+
+  /* ── MODAL ───────────────────────────────────────── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:#1a1a18;border:1px solid var(--gray-mid);border-radius:10px;padding:24px;min-width:360px;max-width:520px;width:90%;}
+  .modal h3{font-size:16px;font-weight:700;color:var(--white);margin-bottom:16px;}
+  .form-row{margin-bottom:12px;}
+  .form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-lt);margin-bottom:5px;display:block;}
+  .form-input{width:100%;background:#0d0d0c;border:1px solid var(--gray-mid);border-radius:5px;padding:8px 12px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;}
+  .form-input:focus{border-color:var(--amber-lt);}
+  .form-select{width:100%;background:#0d0d0c;border:1px solid var(--gray-mid);border-radius:5px;padding:8px 12px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;appearance:none;}
+  .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+  /* ── LEGEND BAR ──────────────────────────────────── */
+  .legend-bar{background:#0a0a09;border-top:1px solid var(--gray-mid);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;bottom:0;z-index:100;}
+  .legend-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-lt);}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-lt);}
+
+  /* ── MISC ────────────────────────────────────────── */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .section-header h2{font-size:18px;font-weight:700;color:var(--white);}
+  .badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.06);border:1px solid var(--gray-mid);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--gray-pale);}
+  .back-btn{background:none;border:none;cursor:pointer;color:var(--gray-lt);font-size:12px;font-family:'DM Sans',sans-serif;padding:0;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .back-btn:hover{color:var(--white);}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--gray-lt);font-size:13px;}
+  .divider{height:1px;background:var(--gray-mid);margin:12px 0;}
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .filter-chip{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:4px;padding:4px 10px;font-size:11px;color:var(--gray-pale);cursor:pointer;transition:border-color .15s,color .15s;}
+  .filter-chip.active,.filter-chip:hover{border-color:var(--amber-lt);color:var(--amber-lt);}
+  .sort-arrow{font-size:10px;margin-left:3px;}
+  .kpi-export-box{background:#0a2a20;border:1px solid var(--green-lt);border-radius:8px;padding:14px 18px;margin-top:16px;}
+  .kpi-export-box h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--green-pale);margin-bottom:8px;}
+  .mono-code{font-family:'DM Mono',monospace;font-size:11px;background:#0d0d0c;border:1px solid var(--gray-mid);border-radius:4px;padding:8px 12px;color:var(--green-pale);word-break:break-all;}
+
+  /* ── DONUT ───────────────────────────────────────── */
+  .donut-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;}
+  .donut-label{position:absolute;font-family:'DM Mono',monospace;font-weight:900;text-align:center;}
+
+  /* ── PRINT ───────────────────────────────────────── */
+  @media print{
+    .top-nav,.legend-bar,.nav-right,.btn,.modal-overlay{display:none!important;}
+    .page{display:block!important;padding:0;}
+    body{background:#fff;color:#000;}
+  }
+  @media (max-width:768px){
+    .kpi-strip{grid-template-columns:repeat(2,1fr);}
+    .dash-grid{grid-template-columns:1fr;}
+    .tab-btn{padding:14px 10px;font-size:12px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ─────────────────────────────────────────── -->
+<nav class="top-nav">
+  <div class="nav-logo">Crystal Fountains <span>// PE Skills Matrix</span></div>
+  <button class="tab-btn active" onclick="showPage('dashboard')">Dashboard</button>
+  <button class="tab-btn" onclick="showPage('matrix')">Full Matrix</button>
+  <button class="tab-btn" onclick="showPage('team')">Team View</button>
+  <button class="tab-btn" onclick="showPage('categories')">Categories</button>
+  <button class="tab-btn" onclick="showPage('settings')">Admin</button>
+  <div class="nav-right">
+    <span id="editBadge" class="edit-badge" style="display:none">✏ EDIT MODE</span>
+    <span id="saveStatus" class="save-status"></span>
+    <button class="btn btn-ghost btn-sm" onclick="toggleEdit()" id="editBtn">✏ Edit</button>
+    <button class="btn btn-green btn-sm" onclick="exportJSON()">↓ Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerImport()">↑ Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+  </div>
+</nav>
+
+<!-- ── PAGES ──────────────────────────────────────────────── -->
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="section-header">
+    <h2>Product Engineering — Skills &amp; Training Overview</h2>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-amber btn-sm" onclick="openModal('addPerson')">+ Person</button>
+      <button class="btn btn-navy btn-sm" onclick="openModal('addCategory')">+ Category</button>
+    </div>
+  </div>
+  <div class="kpi-strip" id="kpiStrip"></div>
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-header"><h3>Team Progress by Category</h3></div>
+      <div class="card-body" id="catProgressList"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Critical Gaps (Levels 0–1)</h3></div>
+      <div class="card-body" id="gapsList"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Team Member Summary</h3></div>
+    <div class="card-body">
+      <div id="teamSummaryTable"></div>
+    </div>
+  </div>
+  <div class="kpi-export-box">
+    <h4>🔗 KPI Integration — Live Data Endpoint</h4>
+    <p style="font-size:12px;color:var(--green-pale);margin-bottom:8px;">This object is available at <code style="font-family:'DM Mono',monospace">window.CF_PE_SKILLS_KPI</code> for the PE KPI dashboard to consume. Copy the JSON snapshot below for manual integration.</p>
+    <div class="mono-code" id="kpiJsonSnippet" style="max-height:80px;overflow:hidden;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'80px':'none'">Click to expand…</div>
+  </div>
+</div>
+
+<!-- FULL MATRIX -->
+<div id="page-matrix" class="page">
+  <div class="section-header">
+    <h2>Full Skills Matrix</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="matrixEditHint" style="font-size:11px;color:var(--gray-lt);display:none">Click any badge to cycle level</span>
+      <button class="btn btn-amber btn-sm" onclick="openModal('addSkill')">+ Skill</button>
+    </div>
+  </div>
+  <div class="filter-bar" id="matrixFilter"></div>
+  <div class="matrix-wrap">
+    <table class="matrix-table" id="matrixTable"></table>
+  </div>
+</div>
+
+<!-- TEAM VIEW -->
+<div id="page-team" class="page">
+  <div id="personDetail" style="display:none">
+    <button class="back-btn" onclick="closePersonDetail()">← Back to Team</button>
+    <div id="personDetailContent"></div>
+  </div>
+  <div id="teamGrid">
+    <div class="section-header">
+      <h2>Team Members</h2>
+      <button class="btn btn-amber btn-sm" onclick="openModal('addPerson')">+ Person</button>
+    </div>
+    <div class="person-grid" id="personCards"></div>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<div id="page-categories" class="page">
+  <div class="section-header">
+    <h2>Skill Categories</h2>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-amber btn-sm" onclick="openModal('addSkill')">+ Skill</button>
+      <button class="btn btn-navy btn-sm" onclick="openModal('addCategory')">+ Category</button>
+    </div>
+  </div>
+  <div id="categoryList"></div>
+</div>
+
+<!-- SETTINGS / ADMIN -->
+<div id="page-settings" class="page">
+  <div class="section-header"><h2>Admin &amp; Settings</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card">
+      <div class="card-header"><h3>Team Members</h3><button class="btn btn-amber btn-sm" onclick="openModal('addPerson')">+ Add</button></div>
+      <div class="card-body" id="adminTeamList"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Data Management</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-green" onclick="exportJSON()">↓ Export JSON (backup/share)</button>
+        <button class="btn btn-navy" onclick="triggerImport()">↑ Import JSON</button>
+        <div class="divider"></div>
+        <p style="font-size:12px;color:var(--gray-lt);">Data is automatically saved to your browser's local storage. Export JSON to share with teammates or back up your data.</p>
+        <div class="divider"></div>
+        <p class="dash-section-title">Danger Zone</p>
+        <button class="btn btn-red btn-sm" onclick="confirmReset()">⚠ Reset All Data to Defaults</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h3>Level Definitions</h3></div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px;" id="levelDefs"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LEGEND ──────────────────────────────────────────── -->
+<div class="legend-bar">
+  <span class="legend-label">Level Key:</span>
+  <div class="legend-item"><div class="lvl lv0">—</div> Not Set</div>
+  <div class="legend-item"><div class="lvl lv1">1</div> Awareness</div>
+  <div class="legend-item"><div class="lvl lv2">2</div> Developing</div>
+  <div class="legend-item"><div class="lvl lv3">3</div> Competent</div>
+  <div class="legend-item"><div class="lvl lv4">4</div> Expert</div>
+  <div style="margin-left:auto;font-size:11px;color:var(--gray-lt);" id="lastSavedLegend"></div>
+</div>
+
+<!-- ── MODALS ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-addPerson" onclick="outsideClose(event,'addPerson')">
+  <div class="modal">
+    <h3>Add Team Member</h3>
+    <div class="form-row"><label class="form-label">Full Name</label><input class="form-input" id="ap-name" placeholder="e.g. Jane Smith"></div>
+    <div class="form-row"><label class="form-label">Role / Title</label><input class="form-input" id="ap-role" placeholder="e.g. Product Engineer"></div>
+    <div class="form-row"><label class="form-label">Initials (2 chars)</label><input class="form-input" id="ap-init" placeholder="e.g. JS" maxlength="3"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('addPerson')">Cancel</button>
+      <button class="btn btn-amber" onclick="addPerson()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addCategory" onclick="outsideClose(event,'addCategory')">
+  <div class="modal">
+    <h3>Add Skill Category</h3>
+    <div class="form-row"><label class="form-label">Category Name</label><input class="form-input" id="ac-name" placeholder="e.g. Quality Systems"></div>
+    <div class="form-row">
+      <label class="form-label">Accent Color</label>
+      <select class="form-select" id="ac-color">
+        <option value="navy">Navy Blue</option>
+        <option value="green">Green</option>
+        <option value="amber">Amber</option>
+        <option value="indigo">Indigo</option>
+        <option value="red">Red</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('addCategory')">Cancel</button>
+      <button class="btn btn-amber" onclick="addCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addSkill" onclick="outsideClose(event,'addSkill')">
+  <div class="modal">
+    <h3>Add Skill</h3>
+    <div class="form-row">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="as-cat"></select>
+    </div>
+    <div class="form-row"><label class="form-label">Skill Name</label><input class="form-input" id="as-name" placeholder="e.g. FEA Analysis"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('addSkill')">Cancel</button>
+      <button class="btn btn-amber" onclick="addSkill()">Add Skill</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-confirmDelete" onclick="outsideClose(event,'confirmDelete')">
+  <div class="modal">
+    <h3 id="deleteTitle">Confirm Delete</h3>
+    <p id="deleteMsg" style="font-size:13px;color:var(--gray-pale);margin-bottom:16px;"></p>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('confirmDelete')">Cancel</button>
+      <button class="btn btn-red" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCRIPT ──────────────────────────────────────────── -->
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DEFAULT DATA
+// ═══════════════════════════════════════════════════════════
+const DEFAULT_TEAM = [
+  {id:"GA",name:"George Ayer",role:"Product Engineering Manager",initials:"GA"},
+  {id:"HH",name:"Hammad Hassan",role:"Product Engineer",initials:"HH"},
+  {id:"OB",name:"Oleksa Bilaniouk",role:"Product Engineer",initials:"OB"},
+  {id:"MK",name:"Michael Kafarowski",role:"Product Engineer",initials:"MK"},
+  {id:"MT",name:"Mirush Trimi",role:"Product Engineer",initials:"MT"},
+  {id:"MS",name:"Mackenzie Streb",role:"Product Engineer",initials:"MS"},
+  {id:"VK",name:"Vijay Kalkani",role:"Product Engineer",initials:"VK"},
+  {id:"FW",name:"Freddy Wu",role:"Product Engineer",initials:"FW"},
+];
+
+const DEFAULT_CATEGORIES = [
+  {id:"software",label:"Software",color:"navy",skills:[
+    "SolidWorks","SolidWorks PDM","CadLink","AutoCAD","PDF Editor (Adobe/Foxit)",
+    "Outlook","Microsoft Office","Crystal VPN","FRACAS","Visual","Specifier","Jabber"
+  ]},
+  {id:"epicor",label:"Epicor ERP",color:"green",skills:[
+    "Part Numbering","Bill Structures","Part Entry","Units of Measure","Attachments",
+    "Purchase Burden","Purchase Parts / MFG Datasheets","Engineering Workbench","ECO Process",
+    "Method Tracker","Costing Workbench","Cost Adjustments","BOM Cost","BOM Listing",
+    "Purchase Requisitions","Purchase Order Tracker","Quote Entry / Tracker","Order Tracker",
+    "Time Phased Enquiry","Cases and Tasks","Project Management","Hopper Report","Forecast Report"
+  ]},
+  {id:"design",label:"Design Standards & Requirements",color:"amber",skills:[
+    "Material Selection","Material Finishes","In-Concrete Design","Construction & Winter Covers",
+    "Clear-to-Build Checklist","Drawing Standards","PDM Vault Standards","PDM Vault Workflow","CadLink Workflow & SOP"
+  ]},
+  {id:"dept_policy",label:"Departmental Policies & Procedures",color:"indigo",skills:[
+    "Cost Estimating & Pricing","Time Keeping","Aircraft on Ground","Product Failure Analysis",
+    "Product Development Process","IDEO / Human Centred Design","New Product Launch Checklist",
+    "Product Areas (Custom/New/Legacy/Warranty)","Warranty Policy & Procedure"
+  ]},
+  {id:"product",label:"Product Knowledge",color:"navy",skills:[
+    "Crystal Website","CAD Library (S:) Drive","Project (T:) Drive","Product Cut Sheets",
+    "Exploded Views","Product Installation Sheets","Product Manuals","Fabrication Packages",
+    "Product Categories & Types","WaterCrystal","POA Products","Custom Products"
+  ]},
+  {id:"market",label:"Market Knowledge",color:"green",skills:[
+    "Major Competitors","Major Competitor Products","North American Installation",
+    "Rest of World Installation","Architecturally Specified Products","Spec-to-Sales Process",
+    "Red Orders Process","Financial Instruments (LCs)","HS Codes"
+  ]},
+  {id:"mech",label:"Mechanical / Hydraulic Engineering",color:"amber",skills:[
+    "Standard CF Piping Calcs","Automated Engineering Program","Piping Handbook",
+    "Draw-Down Calcs","Surge Tank Calcs","Water Treatment (Codes)","Spill Thickness Calcs","Weir Edge / Overflow Options"
+  ]},
+  {id:"elec",label:"Electrical Engineering",color:"indigo",skills:[
+    "Standard World Power Supplies","Conduit & Conductor Sizing","Automated Engineering Program",
+    "Voltage Drop / Distance","Electrical Product Cut Sheets","Ground Fault Circuit Requirements",
+    "Control Panel Requirements","JEA Panel MOM Creation","Data Communication Requirements","DMX / RDM Basics"
+  ]},
+  {id:"equip",label:"Associated Equipment",color:"navy",skills:[
+    "Pumps","Strainers","Sensors (Level / Wind / Rain)",
+    "Pipes — PVC, CPVC, SS, Hose","Pipe Types — Metric, BSP","Fittings — Elbows / Tees",
+    "Valves — Butterfly / Gate / Globe","Filters — Sand / Cartridge / Bag",
+    "Water Treatment Systems","Air Systems — Compressors / Dryers","Animation & MCC Panels"
+  ]},
+  {id:"codes",label:"Codes & Regulations",color:"red",skills:[
+    "UL678","CE","NEC — Section 680","California (Title 22)","Florida","New York",
+    "European (Italy)","SASO","HS Codes"
+  ]},
+  {id:"construction",label:"Construction Methods",color:"green",skills:[
+    "Site Photos","Ontario Building Code","Concrete Construction","Waterproofing Specifications",
+    "Materials Corrosion Resistance","Fountain Finishes","Stone Finishes Construction"
+  ]},
+  {id:"risk",label:"Risk Management",color:"amber",skills:[
+    "FMEA","NPV Analysis","Noise","Aesthetics","Budget vs Client Expectations",
+    "New Client vs Existing Client","New Product Risk"
+  ]},
+  {id:"arch",label:"Architectural Design Process",color:"indigo",skills:[
+    "Design Stages (SD / DD / CD / CA / SU / Warranty)"
+  ]},
+  {id:"pm",label:"Fountain Project Management",color:"navy",skills:[
+    "Project Handover","Contract Scopes","Parts vs Consultant Services",
+    "Dealing with Contractors","Costing Sheets","SOVs"
+  ]},
+  {id:"site",label:"Site & Field Work",color:"green",skills:[
+    "Start-Up & Commissioning","Go to Job Sites","Programming",
+    "Electrical Troubleshooting","Mechanical Troubleshooting","Site Reports & Punch Lists","Start-Up Checklists"
+  ]},
+  {id:"drawings",label:"Drawings & Standards",color:"amber",skills:[
+    "SolidWorks Templates","Finish Standards","Tolerance Standards",
+    "Standard Notes","Cutlist Training","AutoCAD Standards"
+  ]},
+  {id:"dept_process",label:"Department Processes",color:"indigo",skills:[
+    "EC Process","SSE Tool","Problem Identification & Escalation",
+    "Blockage Identification & Escalation","Tier Boards","HPM Training"
+  ]},
+];
+
+const LEVEL_DEFS = [
+  {level:0,label:"Not Set",desc:"No assessment recorded yet",lv:"lv0"},
+  {level:1,label:"Awareness",desc:"Basic understanding; has read or attended an overview",lv:"lv1"},
+  {level:2,label:"Developing",desc:"Some practical experience; requires guidance",lv:"lv2"},
+  {level:3,label:"Competent",desc:"Works independently; solid practical knowledge",lv:"lv3"},
+  {level:4,label:"Expert",desc:"Deep mastery; can coach others and handle edge cases",lv:"lv4"},
+];
+
+const COLOR_MAP = {
+  navy:  {bar:"#378ADD",text:"#85B7EB"},
+  green: {bar:"#1D9E75",text:"#9FE1CB"},
+  amber: {bar:"#EF9F27",text:"#FAC775"},
+  indigo:{bar:"#7F77DD",text:"#CECBF6"},
+  red:   {bar:"#E24B4A",text:"#F7C1C1"},
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let STATE = {
+  version:"1.0",
+  lastSaved:null,
+  team:[],
+  categories:[],
+  skills:{},  // { personId: { "skill name": 0-4 } }
+  editMode:false,
+  activeCatFilter:"all",
+};
+
+// ═══════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+const LS_KEY = "cf_pe_skills_matrix_v1";
+
+// ── Firebase config (connection settings only — not a secret) ──
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyB-3Dvs_riV56eSC1CQ5wWBwOWm6zYLR-k",
+  authDomain:        "cf-pe-skills-matrix.firebaseapp.com",
+  databaseURL:       "https://cf-pe-skills-matrix-default-rtdb.firebaseio.com",
+  projectId:         "cf-pe-skills-matrix",
+  storageBucket:     "cf-pe-skills-matrix.firebasestorage.app",
+  messagingSenderId: "413075993751",
+  appId:             "1:413075993751:web:6c166cdb2dfa6f03a725d2"
+};
+
+let db         = null;
+let _syncing   = false; // prevents listener re-render while we're mid-save
+
+function initFirebase(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+
+    // Real-time listener — fires on first load AND whenever any user saves
+    db.ref("/matrix").on("value", snapshot => {
+      if(_syncing) return; // skip echo of our own save
+      const data = snapshot.val();
+      if(!data) return;
+      STATE.team       = (data.team       && data.team.length)       ? data.team       : STATE.team;
+      STATE.categories = (data.categories && data.categories.length) ? data.categories : STATE.categories;
+      STATE.skills     = data.skills     || {};
+      STATE.lastSaved  = data.lastSaved  || null;
+      // Also cache locally for offline fallback
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        team:STATE.team, categories:STATE.categories,
+        skills:STATE.skills, lastSaved:STATE.lastSaved, version:STATE.version
+      }));
+      renderAll();
+      updateSyncBadge("synced");
+    });
+
+    updateSyncBadge("connected");
+  }catch(e){
+    console.warn("Firebase unavailable — running in offline mode.", e);
+    updateSyncBadge("offline");
+  }
+}
+
+function updateSyncBadge(status){
+  const el = document.getElementById("saveStatus");
+  if(!el) return;
+  const map = {
+    connected: "● Connected",
+    synced:    "✓ Synced",
+    saving:    "↑ Saving…",
+    offline:   "⚠ Offline (local only)",
+  };
+  el.textContent = map[status] || "";
+  el.style.color = status==="offline" ? "var(--amber-lt)"
+                 : status==="synced"  ? "var(--green-lt)"
+                 : "var(--gray-lt)";
+}
+
+function saveState(){
+  STATE.lastSaved = new Date().toISOString();
+  const payload = {
+    team:       STATE.team,
+    categories: STATE.categories,
+    skills:     STATE.skills,
+    lastSaved:  STATE.lastSaved,
+    version:    STATE.version,
+  };
+  // Always write locally first (instant, works offline)
+  localStorage.setItem(LS_KEY, JSON.stringify(payload));
+
+  if(db){
+    _syncing = true;
+    updateSyncBadge("saving");
+    db.ref("/matrix").set(payload)
+      .then(()=>{
+        updateSyncBadge("synced");
+        setTimeout(()=>{ _syncing = false; }, 500);
+      })
+      .catch(err=>{
+        console.warn("Firebase write failed:", err);
+        _syncing = false;
+        updateSyncBadge("offline");
+      });
+  }
+  publishKPI();
+}
+
+function loadState(){
+  localStorage.removeItem("cf_pe_skills_matrix"); // clear old key
+
+  // Load from localStorage instantly (Firebase listener overrides within ~1s)
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){
+    try{
+      const s = JSON.parse(raw);
+      STATE.team       = (s.team       && s.team.length)       ? s.team       : JSON.parse(JSON.stringify(DEFAULT_TEAM));
+      STATE.categories = (s.categories && s.categories.length) ? s.categories : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+      STATE.skills     = s.skills     || {};
+      STATE.lastSaved  = s.lastSaved  || null;
+      STATE.version    = s.version    || "1.0";
+    }catch(e){
+      STATE.team       = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+      STATE.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    }
+  } else {
+    STATE.team       = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+    STATE.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+  }
+}
+
+function updateSaveStatus(){
+  const el = document.getElementById("saveStatus");
+  const leg = document.getElementById("lastSavedLegend");
+  if(STATE.lastSaved){
+    const d = new Date(STATE.lastSaved);
+    const str = "Saved "+d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    if(el) el.textContent = str;
+    if(leg) leg.textContent = str+" on "+d.toLocaleDateString();
+  }
+}
+
+function exportJSON(){
+  const data = {
+    version:STATE.version,
+    exported:new Date().toISOString(),
+    team:STATE.team,
+    categories:STATE.categories,
+    skills:STATE.skills,
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "CF_PE_SkillsMatrix_"+new Date().toISOString().slice(0,10)+".json";
+  a.click();
+}
+
+function triggerImport(){ document.getElementById("importFile").click(); }
+
+function importJSON(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try{
+      const d = JSON.parse(ev.target.result);
+      if(d.team) STATE.team = d.team;
+      if(d.categories) STATE.categories = d.categories;
+      if(d.skills) STATE.skills = d.skills;
+      saveState();
+      renderAll();
+      alert("Import successful!");
+    }catch(err){ alert("Invalid JSON file."); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+}
+
+function confirmReset(){
+  if(confirm("This will erase all skill levels and custom entries. Continue?")){
+    STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+    STATE.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    STATE.skills = {};
+    saveState();
+    renderAll();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  KPI INTEGRATION — expose window object for KPI dashboard
+// ═══════════════════════════════════════════════════════════
+function publishKPI(){
+  const kpi = buildKPIData();
+  window.CF_PE_SKILLS_KPI = kpi;
+  const el = document.getElementById("kpiJsonSnippet");
+  if(el){
+    const snippet = {
+      teamCompletionPct: kpi.teamCompletionPct,
+      totalSkills: kpi.totalSkills,
+      totalGaps: kpi.totalGaps,
+      expertCount: kpi.expertCount,
+      lastUpdated: kpi.lastUpdated,
+      kpiLink:"window.CF_PE_SKILLS_KPI",
+    };
+    el.textContent = JSON.stringify(snippet,null,2);
+  }
+}
+
+function buildKPIData(){
+  const allSkills = getAllSkillNames();
+  const total = allSkills.length * STATE.team.length;
+  let filled=0, gaps=0, experts=0;
+  STATE.team.forEach(p=>{
+    allSkills.forEach(sk=>{
+      const lv = getLevel(p.id,sk);
+      if(lv>0) filled++;
+      if(lv<=1) gaps++;
+      if(lv===4) experts++;
+    });
+  });
+  return {
+    teamCompletionPct: total>0 ? Math.round(filled/total*100) : 0,
+    totalSkills: allSkills.length,
+    totalTeamMembers: STATE.team.length,
+    totalGaps: gaps,
+    expertCount: experts,
+    categories: STATE.categories.map(c=>({
+      id:c.id,label:c.label,
+      avgPct: Math.round(teamCatPct(c)*100),
+    })),
+    lastUpdated: STATE.lastSaved || new Date().toISOString(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATA HELPERS
+// ═══════════════════════════════════════════════════════════
+function getLevel(personId,skill){
+  return (STATE.skills[personId]||{})[skill] || 0;
+}
+
+function setLevel(personId,skill,level){
+  if(!STATE.skills[personId]) STATE.skills[personId]={};
+  STATE.skills[personId][skill]=level;
+  saveState();
+}
+
+function cycleLevel(personId,skill){
+  const cur = getLevel(personId,skill);
+  setLevel(personId, skill, (cur+1)%5);
+  renderAll();
+}
+
+function getAllSkillNames(){
+  const arr=[];
+  STATE.categories.forEach(c=>c.skills.forEach(s=>arr.push(s)));
+  return arr;
+}
+
+function personScore(personId){
+  const all = getAllSkillNames();
+  if(!all.length) return 0;
+  const sum = all.reduce((a,sk)=>a+getLevel(personId,sk),0);
+  return Math.round(sum/(all.length*4)*100);
+}
+
+function personGaps(personId){
+  return getAllSkillNames().filter(sk=>getLevel(personId,sk)<=1);
+}
+
+function catPersonPct(personId,cat){
+  if(!cat.skills.length) return 0;
+  const sum = cat.skills.reduce((a,sk)=>a+getLevel(personId,sk),0);
+  return Math.round(sum/(cat.skills.length*4)*100);
+}
+
+function teamCatPct(cat){
+  if(!cat.skills.length||!STATE.team.length) return 0;
+  let sum=0;
+  STATE.team.forEach(p=>cat.skills.forEach(sk=>{ sum+=getLevel(p.id,sk); }));
+  return sum/(cat.skills.length*STATE.team.length*4);
+}
+
+function skillTeamAvg(skill){
+  if(!STATE.team.length) return 0;
+  const sum = STATE.team.reduce((a,p)=>a+getLevel(p.id,skill),0);
+  return (sum/STATE.team.length).toFixed(1);
+}
+
+function colorForPct(pct){
+  if(pct>=75) return "#1D9E75";
+  if(pct>=40) return "#EF9F27";
+  return "#E24B4A";
+}
+
+function avgClass(avg){
+  const v=parseFloat(avg);
+  if(v===0) return "avg-0";
+  if(v<1.5) return "avg-1";
+  if(v<2.5) return "avg-2";
+  if(v<3.5) return "avg-3";
+  return "avg-4";
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI — NAVIGATION
+// ═══════════════════════════════════════════════════════════
+let currentPage = "dashboard";
+let currentPersonId = null;
+
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  const btns = document.querySelectorAll(".tab-btn");
+  btns.forEach(b=>{ if(b.getAttribute("onclick")===`showPage('${id}')`) b.classList.add("active"); });
+  currentPage=id;
+  // Hide person detail when switching away
+  if(id!=="team"){
+    document.getElementById("personDetail").style.display="none";
+    document.getElementById("teamGrid").style.display="block";
+  }
+  renderPage(id);
+}
+
+function renderPage(id){
+  if(id==="dashboard") renderDashboard();
+  if(id==="matrix") renderMatrix();
+  if(id==="team") renderTeam();
+  if(id==="categories") renderCategories();
+  if(id==="settings") renderSettings();
+}
+
+function renderAll(){
+  renderPage(currentPage);
+  updateSaveStatus();
+  publishKPI();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EDIT MODE
+// ═══════════════════════════════════════════════════════════
+function toggleEdit(){
+  STATE.editMode = !STATE.editMode;
+  const btn = document.getElementById("editBtn");
+  const badge = document.getElementById("editBadge");
+  const hint = document.getElementById("matrixEditHint");
+  if(STATE.editMode){
+    btn.textContent="✓ Done Editing";
+    btn.className="btn btn-amber btn-sm";
+    badge.style.display="inline-flex";
+    if(hint) hint.style.display="inline";
+  } else {
+    btn.textContent="✏ Edit";
+    btn.className="btn btn-ghost btn-sm";
+    badge.style.display="none";
+    if(hint) hint.style.display="none";
+  }
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LEVEL BADGE HTML
+// ═══════════════════════════════════════════════════════════
+function lvlBadge(personId, skill, large=false){
+  const lv = getLevel(personId,skill);
+  const lbl = lv===0?"—":lv;
+  const edit = STATE.editMode;
+  const cls = `lvl lv${lv}${large?" lvl-lg":""}${edit?" editable":""}`;
+  const title = LEVEL_DEFS[lv].label;
+  // Use data attributes + event delegation — avoids inline onclick issues
+  const data = edit
+    ? `data-person="${personId}" data-skill="${encodeURIComponent(skill)}"`
+    : "";
+  return `<div class="${cls}" ${data} title="${title}">${lbl}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function renderDashboard(){
+  renderKPIStrip();
+  renderCatProgress();
+  renderGapsList();
+  renderTeamSummaryTable();
+  publishKPI();
+}
+
+function renderKPIStrip(){
+  const kpi = buildKPIData();
+  const el = document.getElementById("kpiStrip");
+  el.innerHTML = `
+    <div class="kpi-tile green">
+      <div class="kpi-label">Team Completion</div>
+      <div class="kpi-value">${kpi.teamCompletionPct}%</div>
+      <div class="kpi-sub">${kpi.totalSkills} skills × ${kpi.totalTeamMembers} people</div>
+    </div>
+    <div class="kpi-tile amber">
+      <div class="kpi-label">Critical Gaps</div>
+      <div class="kpi-value">${kpi.totalGaps}</div>
+      <div class="kpi-sub">Levels 0–1 entries</div>
+    </div>
+    <div class="kpi-tile navy">
+      <div class="kpi-label">Expert Ratings</div>
+      <div class="kpi-value">${kpi.expertCount}</div>
+      <div class="kpi-sub">Level 4 across team</div>
+    </div>
+    <div class="kpi-tile indigo">
+      <div class="kpi-label">Categories</div>
+      <div class="kpi-value">${STATE.categories.length}</div>
+      <div class="kpi-sub">${kpi.totalSkills} total skills</div>
+    </div>
+    <div class="kpi-tile red">
+      <div class="kpi-label">Team Members</div>
+      <div class="kpi-value">${kpi.totalTeamMembers}</div>
+      <div class="kpi-sub">Active in matrix</div>
+    </div>
+  `;
+}
+
+function renderCatProgress(){
+  const el = document.getElementById("catProgressList");
+  el.innerHTML = STATE.categories.map(cat=>{
+    const pct = Math.round(teamCatPct(cat)*100);
+    const c = COLOR_MAP[cat.color]||COLOR_MAP.navy;
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+          <span style="color:var(--white);font-weight:600">${cat.label}</span>
+          <span style="color:${c.text};font-weight:700;font-family:'DM Mono',monospace">${pct}%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" style="width:${pct}%;background:${c.bar};"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderGapsList(){
+  const el = document.getElementById("gapsList");
+  // Collect top gaps: skill + count of people with level <=1
+  const gapMap = {};
+  getAllSkillNames().forEach(sk=>{
+    const cnt = STATE.team.filter(p=>getLevel(p.id,sk)<=1).length;
+    gapMap[sk]=cnt;
+  });
+  const sorted = Object.entries(gapMap).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  el.innerHTML = sorted.map(([sk,cnt])=>`
+    <div class="top-gap-row">
+      <div class="gap-skill">${sk}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:4px;width:80px;height:5px;">
+          <div style="width:${Math.round(cnt/STATE.team.length*100)}%;height:5px;background:#E24B4A;border-radius:4px;"></div>
+        </div>
+        <span class="gap-person" style="min-width:40px;text-align:right">${cnt}/${STATE.team.length}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTeamSummaryTable(){
+  const el = document.getElementById("teamSummaryTable");
+  el.innerHTML = `
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--gray-mid);">
+          <th style="text-align:left;padding:8px 12px;color:var(--gray-lt);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Member</th>
+          <th style="text-align:center;padding:8px 10px;color:var(--gray-lt);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Completion</th>
+          <th style="text-align:center;padding:8px 10px;color:var(--gray-lt);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Gaps</th>
+          <th style="text-align:center;padding:8px 10px;color:var(--gray-lt);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Experts</th>
+          <th style="padding:8px 10px;color:var(--gray-lt);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${STATE.team.map(p=>{
+          const pct=personScore(p);
+          const gaps=personGaps(p.id).length;
+          const experts=getAllSkillNames().filter(sk=>getLevel(p.id,sk)===4).length;
+          const col=colorForPct(pct);
+          return `<tr style="border-bottom:1px solid var(--gray-mid);cursor:pointer;" data-open-person="${p.id}">
+            <td style="padding:8px 12px;display:flex;align-items:center;gap:10px;">
+              <div class="avatar" style="width:30px;height:30px;font-size:11px;">${p.initials}</div>
+              <div>
+                <div style="color:var(--white);font-weight:600;">${p.name}</div>
+                <div style="font-size:10px;color:var(--gray-lt)">${p.role}</div>
+              </div>
+            </td>
+            <td style="text-align:center;color:${col};font-weight:800;font-family:'DM Mono',monospace;">${pct}%</td>
+            <td style="text-align:center;color:var(--red-pale);font-family:'DM Mono',monospace;">${gaps}</td>
+            <td style="text-align:center;color:var(--navy-pale);font-family:'DM Mono',monospace;">${experts}</td>
+            <td style="padding:8px 12px;min-width:120px;">
+              <div class="progress-bar-wrap">
+                <div style="width:${pct}%;height:6px;border-radius:4px;background:${col};"></div>
+              </div>
+            </td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FULL MATRIX
+// ═══════════════════════════════════════════════════════════
+function renderMatrix(){
+  renderMatrixFilters();
+  buildMatrixTable();
+}
+
+function renderMatrixFilters(){
+  const el = document.getElementById("matrixFilter");
+  el.innerHTML = `<span class="filter-chip ${STATE.activeCatFilter==="all"?"active":""}" onclick="setCatFilter('all')">All Categories</span>`
+    + STATE.categories.map(c=>`<span class="filter-chip ${STATE.activeCatFilter===c.id?"active":""}" onclick="setCatFilter('${c.id}')">${c.label}</span>`).join("");
+}
+
+function setCatFilter(id){
+  STATE.activeCatFilter=id;
+  renderMatrixFilters();
+  buildMatrixTable();
+}
+
+function buildMatrixTable(){
+  const tbl = document.getElementById("matrixTable");
+  const cats = STATE.activeCatFilter==="all" ? STATE.categories : STATE.categories.filter(c=>c.id===STATE.activeCatFilter);
+  // Header
+  let html = `<thead><tr>
+    <th class="skill-col">Skill</th>
+    ${STATE.team.map(p=>`<th title="${p.name}" style="min-width:52px">${p.initials}</th>`).join("")}
+    <th style="min-width:52px">Avg</th>
+  </tr></thead><tbody>`;
+
+  cats.forEach(cat=>{
+    const c=COLOR_MAP[cat.color]||COLOR_MAP.navy;
+    html+=`<tr class="cat-row">
+      <td class="skill-name" colspan="${STATE.team.length+2}" style="color:${c.text};border-color:${c.bar}">${cat.label} <span style="font-weight:400;font-size:10px;opacity:.6">(${cat.skills.length} skills)</span></td>
+    </tr>`;
+    cat.skills.forEach(sk=>{
+      const avg = skillTeamAvg(sk);
+      html+=`<tr>
+        <td class="skill-name">${sk}</td>
+        ${STATE.team.map(p=>`<td>${lvlBadge(p.id,sk)}</td>`).join("")}
+        <td><span class="team-avg ${avgClass(avg)}">${avg}</span></td>
+      </tr>`;
+    });
+  });
+
+  html+="</tbody>";
+  tbl.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TEAM VIEW
+// ═══════════════════════════════════════════════════════════
+function renderTeam(){
+  // If person detail is open, re-render it live instead of the cards grid
+  if(currentPersonId && document.getElementById("personDetail").style.display !== "none"){
+    const p = STATE.team.find(x=>x.id===currentPersonId);
+    if(p){ renderPersonDetail(p); return; }
+  }
+  const el = document.getElementById("personCards");
+  el.innerHTML = STATE.team.map(p=>{
+    const pct=personScore(p);
+    const gaps=personGaps(p.id).length;
+    const col=colorForPct(pct);
+    return `
+      <div class="person-card" data-open-person="${p.id}">
+        <div class="person-card-head">
+          <div class="avatar">${p.initials}</div>
+          <div>
+            <div class="person-name">${p.name}</div>
+            <div class="person-role">${p.role}</div>
+          </div>
+        </div>
+        <div class="person-card-body">
+          <div class="progress-bar-wrap">
+            <div style="width:${pct}%;height:6px;border-radius:4px;background:${col};"></div>
+          </div>
+          <div class="stat-row" style="margin-top:8px;">
+            <span>Completion</span><span class="stat-val" style="color:${col}">${pct}%</span>
+          </div>
+          <div class="stat-row">
+            <span>Critical Gaps</span><span class="stat-val" style="color:var(--red-pale)">${gaps}</span>
+          </div>
+          <div class="stat-row">
+            <span>Expert Skills</span><span class="stat-val" style="color:var(--navy-pale)">${getAllSkillNames().filter(sk=>getLevel(p.id,sk)===4).length}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function openPerson(personId){
+  const p = STATE.team.find(x=>x.id===personId);
+  if(!p) return;
+  currentPersonId = personId;
+  showPage("team");
+  document.getElementById("personDetail").style.display="block";
+  document.getElementById("teamGrid").style.display="none";
+  renderPersonDetail(p);
+}
+
+function closePersonDetail(){
+  currentPersonId = null;
+  document.getElementById("personDetail").style.display="none";
+  document.getElementById("teamGrid").style.display="block";
+  renderTeam();
+}
+
+function renderPersonDetail(p){
+  const pct=personScore(p);
+  const col=colorForPct(pct);
+  let html=`
+    <div class="person-detail-header">
+      <div class="avatar-lg">${p.initials}</div>
+      <div style="flex:1">
+        <div style="font-size:22px;font-weight:900;color:var(--white)">${p.name}</div>
+        <div style="font-size:13px;color:var(--navy-pale)">${p.role}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:36px;font-weight:900;font-family:'DM Mono',monospace;color:${col}">${pct}%</div>
+        <div style="font-size:10px;color:var(--gray-lt);text-transform:uppercase;letter-spacing:.06em">Completion</div>
+      </div>
+      <div style="text-align:center;margin-left:20px;">
+        <div style="font-size:36px;font-weight:900;font-family:'DM Mono',monospace;color:var(--red-pale)">${personGaps(p.id).length}</div>
+        <div style="font-size:10px;color:var(--gray-lt);text-transform:uppercase;letter-spacing:.06em">Gaps</div>
+      </div>
+    </div>
+    <p class="dash-section-title" style="margin-bottom:10px;">Score by Category</p>
+    <div class="cat-scores-grid">
+      ${STATE.categories.map(cat=>{
+        const pct2=catPersonPct(p.id,cat);
+        const c=COLOR_MAP[cat.color]||COLOR_MAP.navy;
+        return `<div class="cat-score-tile">
+          <div class="cat-score-name">${cat.label}</div>
+          <div class="cat-score-bar-wrap"><div style="width:${pct2}%;height:5px;border-radius:3px;background:${c.bar}"></div></div>
+          <div class="cat-score-pct" style="color:${c.text}">${pct2}%</div>
+        </div>`;
+      }).join("")}
+    </div>
+    <p class="dash-section-title" style="margin-bottom:10px;">Skill Details ${STATE.editMode?"<span style='color:var(--amber-lt);font-weight:400'>(click to update)</span>":""}</p>
+  `;
+  STATE.categories.forEach(cat=>{
+    html+=`<div class="cat-section">
+      <div class="cat-section-header">
+        <span class="cat-section-title">${cat.label}</span>
+        <span class="cat-section-meta">${catPersonPct(p.id,cat)}% · ${cat.skills.length} skills</span>
+      </div>
+      <div class="cat-skills-list">
+        ${cat.skills.map(sk=>`
+          <div class="skill-chip">
+            <span class="skill-chip-name">${sk}</span>
+            ${lvlBadge(p.id,sk,true)}
+          </div>
+        `).join("")}
+      </div>
+    </div>`;
+  });
+  document.getElementById("personDetailContent").innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CATEGORIES PAGE
+// ═══════════════════════════════════════════════════════════
+function renderCategories(){
+  const el = document.getElementById("categoryList");
+  el.innerHTML = STATE.categories.map(cat=>{
+    const c=COLOR_MAP[cat.color]||COLOR_MAP.navy;
+    const avgPct = Math.round(teamCatPct(cat)*100);
+    return `
+      <div class="cat-section">
+        <div class="cat-section-header">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:3px;height:20px;background:${c.bar};border-radius:2px;"></div>
+            <span class="cat-section-title">${cat.label}</span>
+            <span class="badge">${cat.skills.length} skills</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;font-weight:700;color:${c.text};font-family:'DM Mono',monospace">${avgPct}% team avg</span>
+            <button class="btn btn-ghost btn-sm" onclick="openAddSkillFor('${cat.id}')">+ Skill</button>
+            <button class="btn btn-red btn-sm" onclick="confirmDeleteCat('${cat.id}')">✕</button>
+          </div>
+        </div>
+        <div class="cat-skills-list">
+          ${cat.skills.map(sk=>`
+            <div class="skill-chip">
+              <span class="skill-chip-name">${sk}</span>
+              <span class="skill-chip-del" onclick="confirmDeleteSkill('${cat.id}','${sk.replace(/'/g,"\\'")}')">×</span>
+            </div>
+          `).join("")}
+          ${cat.skills.length===0?`<span style="font-size:12px;color:var(--gray-lt);font-style:italic">No skills yet — add one above</span>`:""}
+        </div>
+      </div>
+    `;
+  }).join("")||"<div class='empty-state'>No categories yet. Add one above.</div>";
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SETTINGS / ADMIN
+// ═══════════════════════════════════════════════════════════
+function renderSettings(){
+  const el = document.getElementById("adminTeamList");
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${STATE.team.map(p=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-mid);">
+          <div class="avatar" style="width:32px;height:32px;font-size:11px;">${p.initials}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--white);font-weight:600">${p.name}</div>
+            <div style="font-size:11px;color:var(--gray-lt)">${p.role}</div>
+          </div>
+          <button class="btn btn-red btn-sm" onclick="confirmDeletePerson('${p.id}')">✕</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  const ld = document.getElementById("levelDefs");
+  ld.innerHTML = LEVEL_DEFS.map(d=>`
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="lvl lv${d.level} lvl-lg">${d.level===0?"—":d.level}</div>
+      <div>
+        <div style="font-weight:700;color:var(--white);font-size:13px">${d.label}</div>
+        <div style="font-size:12px;color:var(--gray-lt)">${d.desc}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════════════════════
+function openModal(id){
+  if(id==="addSkill"){
+    const sel = document.getElementById("as-cat");
+    sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}">${c.label}</option>`).join("");
+    document.getElementById("as-name").value="";
+  }
+  if(id==="addPerson"){
+    document.getElementById("ap-name").value="";
+    document.getElementById("ap-role").value="";
+    document.getElementById("ap-init").value="";
+  }
+  if(id==="addCategory"){
+    document.getElementById("ac-name").value="";
+  }
+  document.getElementById("modal-"+id).classList.add("open");
+}
+
+function openAddSkillFor(catId){
+  const sel = document.getElementById("as-cat");
+  sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}" ${c.id===catId?"selected":""}>${c.label}</option>`).join("");
+  document.getElementById("as-name").value="";
+  document.getElementById("modal-addSkill").classList.add("open");
+}
+
+function closeModal(id){
+  document.getElementById("modal-"+id).classList.remove("open");
+}
+
+function outsideClose(e,id){
+  if(e.target===document.getElementById("modal-"+id)) closeModal(id);
+}
+
+function addPerson(){
+  const name=document.getElementById("ap-name").value.trim();
+  const role=document.getElementById("ap-role").value.trim()||"Product Engineer";
+  let init=document.getElementById("ap-init").value.trim().toUpperCase();
+  if(!name){ alert("Name is required."); return; }
+  if(!init) init=name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const id="P"+Date.now().toString(36);
+  STATE.team.push({id,name,role,initials:init});
+  saveState(); renderAll(); closeModal("addPerson");
+}
+
+function addCategory(){
+  const name=document.getElementById("ac-name").value.trim();
+  if(!name){ alert("Category name is required."); return; }
+  const id="cat"+Date.now().toString(36);
+  STATE.categories.push({id,label:name,color:document.getElementById("ac-color").value,skills:[]});
+  saveState(); renderAll(); closeModal("addCategory");
+}
+
+function addSkill(){
+  const catId=document.getElementById("as-cat").value;
+  const name=document.getElementById("as-name").value.trim();
+  if(!name){ alert("Skill name is required."); return; }
+  const cat=STATE.categories.find(c=>c.id===catId);
+  if(!cat) return;
+  if(cat.skills.includes(name)){ alert("Skill already exists in this category."); return; }
+  cat.skills.push(name);
+  saveState(); renderAll(); closeModal("addSkill");
+}
+
+let _pendingDelete = null;
+
+function confirmDeletePerson(id){
+  const p=STATE.team.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById("deleteTitle").textContent="Delete Team Member";
+  document.getElementById("deleteMsg").textContent=`Remove ${p.name} and all their skill data? This cannot be undone.`;
+  document.getElementById("deleteConfirmBtn").onclick=()=>{
+    STATE.team=STATE.team.filter(x=>x.id!==id);
+    delete STATE.skills[id];
+    saveState(); renderAll(); closeModal("confirmDelete");
+  };
+  openModal("confirmDelete");
+}
+
+function confirmDeleteCat(id){
+  const c=STATE.categories.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById("deleteTitle").textContent="Delete Category";
+  document.getElementById("deleteMsg").textContent=`Remove "${c.label}" and all ${c.skills.length} skills? All team skill data for this category will be lost.`;
+  document.getElementById("deleteConfirmBtn").onclick=()=>{
+    STATE.categories=STATE.categories.filter(x=>x.id!==id);
+    saveState(); renderAll(); closeModal("confirmDelete");
+  };
+  openModal("confirmDelete");
+}
+
+function confirmDeleteSkill(catId,skillName){
+  const c=STATE.categories.find(x=>x.id===catId);
+  if(!c) return;
+  document.getElementById("deleteTitle").textContent="Delete Skill";
+  document.getElementById("deleteMsg").textContent=`Remove "${skillName}" from "${c.label}"? All team ratings for this skill will be lost.`;
+  document.getElementById("deleteConfirmBtn").onclick=()=>{
+    c.skills=c.skills.filter(s=>s!==skillName);
+    saveState(); renderAll(); closeModal("confirmDelete");
+  };
+  openModal("confirmDelete");
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GLOBAL EVENT DELEGATION — badge clicks
+// ═══════════════════════════════════════════════════════════
+document.addEventListener("click", e => {
+  // Skill badge click — cycle level
+  const badge = e.target.closest(".lvl.editable[data-person]");
+  if (badge) {
+    const personId = badge.dataset.person;
+    const skill    = decodeURIComponent(badge.dataset.skill || "");
+    if (personId && skill) cycleLevel(personId, skill);
+    return;
+  }
+  // Person card click — open detail
+  const card = e.target.closest("[data-open-person]");
+  if (card) {
+    openPerson(card.dataset.openPerson);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    document.querySelectorAll(".modal-overlay.open").forEach(m=>m.classList.remove("open"));
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+loadState();        // instant — from localStorage
+renderDashboard();  // renders immediately with local data
+publishKPI();
+initFirebase();     // connects to Firebase — real-time listener overrides within ~1s
+</script>
+</body>
+</html>
