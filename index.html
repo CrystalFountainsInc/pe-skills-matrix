@@ -215,6 +215,24 @@
   .login-btn:hover{opacity:.9;}
   .login-err{color:var(--red-lt);font-size:12px;margin-top:12px;min-height:18px;}
   .login-reset{background:none;border:none;color:var(--navy-pale);font-size:12px;cursor:pointer;margin-top:10px;text-decoration:underline;}
+  /* ── ACCOUNT DROPDOWN ───────────────────────────────── */
+  .acct-wrap{position:relative;display:none;}
+  .acct-btn{background:transparent;border:1px solid var(--gray-mid);border-radius:5px;color:var(--gray-pale);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .acct-btn:hover{border-color:var(--amber-lt);color:var(--white);}
+  .acct-btn::after{content:"▾";font-size:10px;opacity:.7;flex-shrink:0;}
+  .acct-dropdown{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:8px;min-width:200px;z-index:300;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+  .acct-dropdown.open{display:block;}
+  .acct-email{padding:10px 14px;font-size:11px;color:var(--gray-lt);border-bottom:1px solid var(--gray-mid);word-break:break-all;}
+  .acct-item{width:100%;background:none;border:none;text-align:left;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray-pale);cursor:pointer;display:block;}
+  .acct-item:hover{background:var(--gray-dk);color:var(--white);}
+  .acct-item.danger{color:var(--red-lt);}
+  .acct-item.danger:hover{background:#2a1010;}
+  .acct-pw-row{padding:8px 14px 12px;border-top:1px solid var(--gray-mid);}
+  .acct-pw-row input{width:100%;background:#111110;border:1px solid var(--gray-mid);border-radius:5px;padding:7px 10px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:12px;margin-bottom:6px;outline:none;}
+  .acct-pw-row input:focus{border-color:var(--amber-lt);}
+  .acct-pw-btn{width:100%;padding:7px;background:var(--amber-lt);color:#0a0a09;border:none;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+  .acct-pw-btn:hover{opacity:.9;}
+  .acct-msg{font-size:11px;margin-top:6px;min-height:14px;}
 </style>
 </head>
 <body>
@@ -249,8 +267,22 @@
   <button class="tab-btn" onclick="showPage('categories')">Categories</button>
   <button class="tab-btn" onclick="showPage('settings')">Admin</button>
   <div class="nav-right">
-    <span id="navUser" class="save-status" style="display:none"></span>
-    <button id="logoutBtn" class="btn btn-ghost btn-sm" onclick="doLogout()" style="display:none">Sign Out</button>
+    <div class="acct-wrap" id="acctWrap">
+      <button class="acct-btn" id="acctBtn" onclick="toggleAcctMenu()">
+        <span id="navUser"></span>
+      </button>
+      <div class="acct-dropdown" id="acctDropdown">
+        <div class="acct-email" id="acctEmail"></div>
+        <button class="acct-item" onclick="showChangePassword()">🔑 Change Password</button>
+        <div id="acctPwRow" class="acct-pw-row" style="display:none">
+          <input type="password" id="acctNewPw" placeholder="New password (6+ chars)">
+          <input type="password" id="acctConfirmPw" placeholder="Confirm new password">
+          <button class="acct-pw-btn" onclick="doChangePassword()">Update Password</button>
+          <div class="acct-msg" id="acctPwMsg"></div>
+        </div>
+        <button class="acct-item danger" onclick="doLogout()">Sign Out</button>
+      </div>
+    </div>
     <span id="editBadge" class="edit-badge" style="display:none">✏ EDIT MODE</span>
     <span id="saveStatus" class="save-status"></span>
     <button class="btn btn-ghost btn-sm" onclick="toggleEdit()" id="editBtn">✏ Edit</button>
@@ -586,9 +618,9 @@ function initFirebase(){
       if(user){
         // Signed in — show app, hide login overlay
         document.getElementById("loginOverlay").style.display = "none";
-        document.getElementById("navUser").style.display = "inline";
-        document.getElementById("navUser").textContent = user.email;
-        document.getElementById("logoutBtn").style.display = "inline-flex";
+        document.getElementById("acctWrap").style.display = "block";
+        document.getElementById("navUser").textContent = user.email.split("@")[0];
+        document.getElementById("acctEmail").textContent = user.email;
 
         // Set up real-time database listener now that we're authenticated
         db.ref("/matrix").on("value", snapshot => {
@@ -615,8 +647,8 @@ function initFirebase(){
       } else {
         // Signed out — show login screen, hide app
         document.getElementById("loginOverlay").style.display = "flex";
-        document.getElementById("navUser").style.display = "none";
-        document.getElementById("logoutBtn").style.display = "none";
+        document.getElementById("acctWrap").style.display = "none";
+        closeAcctMenu();
         updateSyncBadge("offline");
       }
     });
@@ -638,6 +670,7 @@ function doLogin(){
 
 function doLogout(){
   firebase.auth().signOut();
+  closeAcctMenu();
 }
 
 function doPasswordReset(){
@@ -647,6 +680,49 @@ function doPasswordReset(){
   firebase.auth().sendPasswordResetEmail(email)
     .then(()=>{ err.style.color="var(--green-lt)"; err.textContent = "Reset email sent — check your inbox."; })
     .catch(e=>{ err.textContent = friendlyAuthError(e.code); });
+}
+
+function toggleAcctMenu(){
+  document.getElementById("acctDropdown").classList.toggle("open");
+}
+
+function closeAcctMenu(){
+  document.getElementById("acctDropdown").classList.remove("open");
+  document.getElementById("acctPwRow").style.display = "none";
+  document.getElementById("acctNewPw").value = "";
+  document.getElementById("acctConfirmPw").value = "";
+  document.getElementById("acctPwMsg").textContent = "";
+}
+
+function showChangePassword(){
+  const row = document.getElementById("acctPwRow");
+  row.style.display = row.style.display === "none" ? "block" : "none";
+  document.getElementById("acctPwMsg").textContent = "";
+}
+
+function doChangePassword(){
+  const pw1 = document.getElementById("acctNewPw").value;
+  const pw2 = document.getElementById("acctConfirmPw").value;
+  const msg = document.getElementById("acctPwMsg");
+  msg.style.color = "var(--red-lt)";
+  if(pw1.length < 6){ msg.textContent = "Password must be at least 6 characters."; return; }
+  if(pw1 !== pw2){   msg.textContent = "Passwords do not match."; return; }
+  const user = firebase.auth().currentUser;
+  if(!user){ msg.textContent = "Not signed in."; return; }
+  user.updatePassword(pw1)
+    .then(()=>{
+      msg.style.color = "var(--green-lt)";
+      msg.textContent = "Password updated successfully.";
+      document.getElementById("acctNewPw").value = "";
+      document.getElementById("acctConfirmPw").value = "";
+    })
+    .catch(e=>{
+      if(e.code === "auth/requires-recent-login"){
+        msg.textContent = "Please sign out and sign back in, then try again.";
+      } else {
+        msg.textContent = friendlyAuthError(e.code);
+      }
+    });
 }
 
 function friendlyAuthError(code){
@@ -1484,6 +1560,8 @@ document.addEventListener("keydown",e=>{
 // Allow Enter key to submit login form
 document.getElementById("loginEmail").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("loginPassword").focus(); });
 document.getElementById("loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+// Close account dropdown when clicking outside it
+document.addEventListener("click", e=>{ if(!e.target.closest("#acctWrap")) closeAcctMenu(); });
 
 loadState();        // instant — from localStorage
 renderDashboard();  // renders immediately with local data
