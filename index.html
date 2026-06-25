@@ -9,6 +9,7 @@
 <!-- Firebase compat SDK (loaded from Google's CDN — no install needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
   :root {
     --navy:#042C53; --navy-mid:#185FA5; --navy-lt:#378ADD; --navy-pale:#85B7EB;
@@ -198,9 +199,46 @@
     .dash-grid{grid-template-columns:1fr;}
     .tab-btn{padding:14px 10px;font-size:12px;}
   }
+
+  /* ── LOGIN SCREEN ────────────────────────────────────── */
+  .login-overlay{position:fixed;inset:0;z-index:9999;background:#0a0a09;display:flex;align-items:center;justify-content:center;}
+  .login-box{background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:12px;padding:40px;width:100%;max-width:400px;}
+  .login-logo{font-size:13px;font-weight:700;color:var(--green-pale);margin-bottom:4px;letter-spacing:.04em;}
+  .login-logo span{color:var(--amber-lt);}
+  .login-title{font-size:22px;font-weight:900;color:var(--white);margin-bottom:4px;}
+  .login-sub{font-size:13px;color:var(--gray-lt);margin-bottom:28px;}
+  .login-field{margin-bottom:16px;}
+  .login-field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-lt);margin-bottom:6px;}
+  .login-field input{width:100%;background:#111110;border:1px solid var(--gray-mid);border-radius:6px;padding:10px 12px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;}
+  .login-field input:focus{border-color:var(--amber-lt);}
+  .login-btn{width:100%;padding:12px;background:var(--amber-lt);color:#0a0a09;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;}
+  .login-btn:hover{opacity:.9;}
+  .login-err{color:var(--red-lt);font-size:12px;margin-top:12px;min-height:18px;}
+  .login-reset{background:none;border:none;color:var(--navy-pale);font-size:12px;cursor:pointer;margin-top:10px;text-decoration:underline;}
 </style>
 </head>
 <body>
+
+<!-- ── LOGIN SCREEN ──────────────────────────────────────── -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">Crystal Fountains <span>// PE Skills Matrix</span></div>
+    <div class="login-title">Sign In</div>
+    <div class="login-sub">Use your Crystal Fountains email and password.</div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="you@crystalfountains.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="loginErr"></div>
+    <br>
+    <button class="login-reset" onclick="doPasswordReset()">Forgot password?</button>
+  </div>
+</div>
 
 <!-- ── TOP NAV ─────────────────────────────────────────── -->
 <nav class="top-nav">
@@ -211,6 +249,8 @@
   <button class="tab-btn" onclick="showPage('categories')">Categories</button>
   <button class="tab-btn" onclick="showPage('settings')">Admin</button>
   <div class="nav-right">
+    <span id="navUser" class="save-status" style="display:none"></span>
+    <button id="logoutBtn" class="btn btn-ghost btn-sm" onclick="doLogout()" style="display:none">Sign Out</button>
     <span id="editBadge" class="edit-badge" style="display:none">✏ EDIT MODE</span>
     <span id="saveStatus" class="save-status"></span>
     <button class="btn btn-ghost btn-sm" onclick="toggleEdit()" id="editBtn">✏ Edit</button>
@@ -403,16 +443,7 @@
 // ═══════════════════════════════════════════════════════════
 //  DEFAULT DATA
 // ═══════════════════════════════════════════════════════════
-const DEFAULT_TEAM = [
-  {id:"GA",name:"George Ayer",role:"Product Engineering Manager",initials:"GA"},
-  {id:"HH",name:"Hammad Hassan",role:"Product Engineer",initials:"HH"},
-  {id:"OB",name:"Oleksa Bilaniouk",role:"Product Engineer",initials:"OB"},
-  {id:"MK",name:"Michael Kafarowski",role:"Product Engineer",initials:"MK"},
-  {id:"MT",name:"Mirush Trimi",role:"Product Engineer",initials:"MT"},
-  {id:"MS",name:"Mackenzie Streb",role:"Product Engineer",initials:"MS"},
-  {id:"VK",name:"Vijay Kalkani",role:"Product Engineer",initials:"VK"},
-  {id:"FW",name:"Freddy Wu",role:"Product Engineer",initials:"FW"},
-];
+const DEFAULT_TEAM = []; // Team members are managed in Firebase via the Admin panel
 
 const DEFAULT_CATEGORIES = [
   {id:"software",label:"Software",color:"navy",skills:[
@@ -512,6 +543,9 @@ const COLOR_MAP = {
 // ═══════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════
+// ── HTML ESCAPE — prevents XSS from user-supplied content in innerHTML ──
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 let STATE = {
   version:"1.0",
   lastSaved:null,
@@ -545,35 +579,86 @@ function initFirebase(){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.database();
+    const auth = firebase.auth();
 
-    // Real-time listener — fires on first load AND whenever any user saves
-    db.ref("/matrix").on("value", snapshot => {
-      if(_syncing) return;
-      const raw = snapshot.val();
-      if(!raw) return;
-      // Decode — new format wraps everything as a JSON string to avoid Firebase key restrictions
-      let data;
-      try { data = raw.json ? JSON.parse(raw.json) : raw; } catch(e){ return; }
-      if(!data) return;
-      // Only update if incoming data is strictly newer
-      if(STATE.lastSaved && data.lastSaved && data.lastSaved <= STATE.lastSaved) return;
-      STATE.team       = (data.team       && data.team.length)       ? data.team       : STATE.team;
-      STATE.categories = (data.categories && data.categories.length) ? data.categories : STATE.categories;
-      STATE.skills     = data.skills     || {};
-      STATE.lastSaved  = data.lastSaved  || null;
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        team:STATE.team, categories:STATE.categories,
-        skills:STATE.skills, lastSaved:STATE.lastSaved, version:STATE.version
-      }));
-      renderAll();
-      updateSyncBadge("synced");
+    // Watch auth state — app is gated behind sign-in
+    auth.onAuthStateChanged(user => {
+      if(user){
+        // Signed in — show app, hide login overlay
+        document.getElementById("loginOverlay").style.display = "none";
+        document.getElementById("navUser").style.display = "inline";
+        document.getElementById("navUser").textContent = user.email;
+        document.getElementById("logoutBtn").style.display = "inline-flex";
+
+        // Set up real-time database listener now that we're authenticated
+        db.ref("/matrix").on("value", snapshot => {
+          if(_syncing) return;
+          const raw = snapshot.val();
+          if(!raw) return;
+          let data;
+          try{ data = raw.json ? JSON.parse(raw.json) : raw; }catch(e){ return; }
+          if(!data) return;
+          if(STATE.lastSaved && data.lastSaved && data.lastSaved <= STATE.lastSaved) return;
+          STATE.team       = (data.team       && data.team.length)       ? data.team       : STATE.team;
+          STATE.categories = (data.categories && data.categories.length) ? data.categories : STATE.categories;
+          STATE.skills     = data.skills     || {};
+          STATE.lastSaved  = data.lastSaved  || null;
+          localStorage.setItem(LS_KEY, JSON.stringify({
+            team:STATE.team, categories:STATE.categories,
+            skills:STATE.skills, lastSaved:STATE.lastSaved, version:STATE.version
+          }));
+          renderAll();
+          updateSyncBadge("synced");
+        });
+
+        updateSyncBadge("connected");
+      } else {
+        // Signed out — show login screen, hide app
+        document.getElementById("loginOverlay").style.display = "flex";
+        document.getElementById("navUser").style.display = "none";
+        document.getElementById("logoutBtn").style.display = "none";
+        updateSyncBadge("offline");
+      }
     });
-
-    updateSyncBadge("connected");
   }catch(e){
     console.warn("Firebase unavailable — running in offline mode.", e);
     updateSyncBadge("offline");
   }
+}
+
+function doLogin(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const pw    = document.getElementById("loginPassword").value;
+  const err   = document.getElementById("loginErr");
+  err.textContent = "";
+  if(!email || !pw){ err.textContent = "Please enter your email and password."; return; }
+  firebase.auth().signInWithEmailAndPassword(email, pw)
+    .catch(e => { err.textContent = friendlyAuthError(e.code); });
+}
+
+function doLogout(){
+  firebase.auth().signOut();
+}
+
+function doPasswordReset(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const err   = document.getElementById("loginErr");
+  if(!email){ err.textContent = "Enter your email above first."; return; }
+  firebase.auth().sendPasswordResetEmail(email)
+    .then(()=>{ err.style.color="var(--green-lt)"; err.textContent = "Reset email sent — check your inbox."; })
+    .catch(e=>{ err.textContent = friendlyAuthError(e.code); });
+}
+
+function friendlyAuthError(code){
+  const map = {
+    "auth/invalid-email":        "Invalid email address.",
+    "auth/user-not-found":       "No account found with that email.",
+    "auth/wrong-password":       "Incorrect password.",
+    "auth/too-many-requests":    "Too many attempts — try again later.",
+    "auth/invalid-credential":   "Incorrect email or password.",
+    "auth/network-request-failed":"Network error — check your connection.",
+  };
+  return map[code] || "Sign-in failed. Please try again.";
 }
 
 function updateSyncBadge(status){
@@ -956,7 +1041,7 @@ function renderCatProgress(){
     return `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-          <span style="color:var(--white);font-weight:600">${cat.label}</span>
+          <span style="color:var(--white);font-weight:600">${esc(cat.label)}</span>
           <span style="color:${c.text};font-weight:700;font-family:'DM Mono',monospace">${pct}%</span>
         </div>
         <div class="progress-bar-wrap">
@@ -978,7 +1063,7 @@ function renderGapsList(){
   const sorted = Object.entries(gapMap).sort((a,b)=>b[1]-a[1]).slice(0,12);
   el.innerHTML = sorted.map(([sk,cnt])=>`
     <div class="top-gap-row">
-      <div class="gap-skill">${sk}</div>
+      <div class="gap-skill">${esc(sk)}</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="background:var(--card-bg);border:1px solid var(--gray-mid);border-radius:4px;width:80px;height:5px;">
           <div style="width:${Math.round(cnt/STATE.team.length*100)}%;height:5px;background:#E24B4A;border-radius:4px;"></div>
@@ -1011,10 +1096,10 @@ function renderTeamSummaryTable(){
           const col=colorForPct(pct);
           return `<tr style="border-bottom:1px solid var(--gray-mid);cursor:pointer;" data-open-person="${p.id}">
             <td style="padding:8px 12px;display:flex;align-items:center;gap:10px;">
-              <div class="avatar" style="width:30px;height:30px;font-size:11px;">${p.initials}</div>
+              <div class="avatar" style="width:30px;height:30px;font-size:11px;">${esc(p.initials)}</div>
               <div>
-                <div style="color:var(--white);font-weight:600;">${p.name}</div>
-                <div style="font-size:10px;color:var(--gray-lt)">${p.role}</div>
+                <div style="color:var(--white);font-weight:600;">${esc(p.name)}</div>
+                <div style="font-size:10px;color:var(--gray-lt)">${esc(p.role)}</div>
               </div>
             </td>
             <td style="text-align:center;color:${col};font-weight:800;font-family:'DM Mono',monospace;">${pct}%</td>
@@ -1044,7 +1129,7 @@ function renderMatrix(){
 function renderMatrixFilters(){
   const el = document.getElementById("matrixFilter");
   el.innerHTML = `<span class="filter-chip ${STATE.activeCatFilter==="all"?"active":""}" onclick="setCatFilter('all')">All Categories</span>`
-    + STATE.categories.map(c=>`<span class="filter-chip ${STATE.activeCatFilter===c.id?"active":""}" onclick="setCatFilter('${c.id}')">${c.label}</span>`).join("");
+    + STATE.categories.map(c=>`<span class="filter-chip ${STATE.activeCatFilter===c.id?"active":""}" onclick="setCatFilter('${c.id}')">${esc(c.label)}</span>`).join("");
 }
 
 function setCatFilter(id){
@@ -1059,19 +1144,19 @@ function buildMatrixTable(){
   // Header
   let html = `<thead><tr>
     <th class="skill-col">Skill</th>
-    ${STATE.team.map(p=>`<th title="${p.name}" style="min-width:52px">${p.initials}</th>`).join("")}
+    ${STATE.team.map(p=>`<th title="${esc(p.name)}" style="min-width:52px">${esc(p.initials)}</th>`).join("")}
     <th style="min-width:52px">Avg</th>
   </tr></thead><tbody>`;
 
   cats.forEach(cat=>{
     const c=COLOR_MAP[cat.color]||COLOR_MAP.navy;
     html+=`<tr class="cat-row">
-      <td class="skill-name" colspan="${STATE.team.length+2}" style="color:${c.text};border-color:${c.bar}">${cat.label} <span style="font-weight:400;font-size:10px;opacity:.6">(${cat.skills.length} skills)</span></td>
+      <td class="skill-name" colspan="${STATE.team.length+2}" style="color:${c.text};border-color:${c.bar}">${esc(cat.label)} <span style="font-weight:400;font-size:10px;opacity:.6">(${cat.skills.length} skills)</span></td>
     </tr>`;
     cat.skills.forEach(sk=>{
       const avg = skillTeamAvg(sk);
       html+=`<tr>
-        <td class="skill-name">${sk}</td>
+        <td class="skill-name">${esc(sk)}</td>
         ${STATE.team.map(p=>`<td>${lvlBadge(p.id,sk)}</td>`).join("")}
         <td><span class="team-avg ${avgClass(avg)}">${avg}</span></td>
       </tr>`;
@@ -1099,10 +1184,10 @@ function renderTeam(){
     return `
       <div class="person-card" data-open-person="${p.id}">
         <div class="person-card-head">
-          <div class="avatar">${p.initials}</div>
+          <div class="avatar">${esc(p.initials)}</div>
           <div>
-            <div class="person-name">${p.name}</div>
-            <div class="person-role">${p.role}</div>
+            <div class="person-name">${esc(p.name)}</div>
+            <div class="person-role">${esc(p.role)}</div>
           </div>
         </div>
         <div class="person-card-body">
@@ -1146,10 +1231,10 @@ function renderPersonDetail(p){
   const col=colorForPct(pct);
   let html=`
     <div class="person-detail-header">
-      <div class="avatar-lg">${p.initials}</div>
+      <div class="avatar-lg">${esc(p.initials)}</div>
       <div style="flex:1">
-        <div style="font-size:22px;font-weight:900;color:var(--white)">${p.name}</div>
-        <div style="font-size:13px;color:var(--navy-pale)">${p.role}</div>
+        <div style="font-size:22px;font-weight:900;color:var(--white)">${esc(p.name)}</div>
+        <div style="font-size:13px;color:var(--navy-pale)">${esc(p.role)}</div>
       </div>
       <div style="text-align:center">
         <div style="font-size:36px;font-weight:900;font-family:'DM Mono',monospace;color:${col}">${pct}%</div>
@@ -1166,7 +1251,7 @@ function renderPersonDetail(p){
         const pct2=catPersonPct(p.id,cat);
         const c=COLOR_MAP[cat.color]||COLOR_MAP.navy;
         return `<div class="cat-score-tile">
-          <div class="cat-score-name">${cat.label}</div>
+          <div class="cat-score-name">${esc(cat.label)}</div>
           <div class="cat-score-bar-wrap"><div style="width:${pct2}%;height:5px;border-radius:3px;background:${c.bar}"></div></div>
           <div class="cat-score-pct" style="color:${c.text}">${pct2}%</div>
         </div>`;
@@ -1177,13 +1262,13 @@ function renderPersonDetail(p){
   STATE.categories.forEach(cat=>{
     html+=`<div class="cat-section">
       <div class="cat-section-header">
-        <span class="cat-section-title">${cat.label}</span>
+        <span class="cat-section-title">${esc(cat.label)}</span>
         <span class="cat-section-meta">${catPersonPct(p.id,cat)}% · ${cat.skills.length} skills</span>
       </div>
       <div class="cat-skills-list">
         ${cat.skills.map(sk=>`
           <div class="skill-chip">
-            <span class="skill-chip-name">${sk}</span>
+            <span class="skill-chip-name">${esc(sk)}</span>
             ${lvlBadge(p.id,sk,true)}
           </div>
         `).join("")}
@@ -1206,7 +1291,7 @@ function renderCategories(){
         <div class="cat-section-header">
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:3px;height:20px;background:${c.bar};border-radius:2px;"></div>
-            <span class="cat-section-title">${cat.label}</span>
+            <span class="cat-section-title">${esc(cat.label)}</span>
             <span class="badge">${cat.skills.length} skills</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -1218,7 +1303,7 @@ function renderCategories(){
         <div class="cat-skills-list">
           ${cat.skills.map(sk=>`
             <div class="skill-chip">
-              <span class="skill-chip-name">${sk}</span>
+              <span class="skill-chip-name">${esc(sk)}</span>
               <span class="skill-chip-del" onclick="confirmDeleteSkill('${cat.id}','${sk.replace(/'/g,"\\'")}')">×</span>
             </div>
           `).join("")}
@@ -1238,10 +1323,10 @@ function renderSettings(){
     <div style="display:flex;flex-direction:column;gap:6px;">
       ${STATE.team.map(p=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-mid);">
-          <div class="avatar" style="width:32px;height:32px;font-size:11px;">${p.initials}</div>
+          <div class="avatar" style="width:32px;height:32px;font-size:11px;">${esc(p.initials)}</div>
           <div style="flex:1">
-            <div style="font-size:13px;color:var(--white);font-weight:600">${p.name}</div>
-            <div style="font-size:11px;color:var(--gray-lt)">${p.role}</div>
+            <div style="font-size:13px;color:var(--white);font-weight:600">${esc(p.name)}</div>
+            <div style="font-size:11px;color:var(--gray-lt)">${esc(p.role)}</div>
           </div>
           <button class="btn btn-red btn-sm" onclick="confirmDeletePerson('${p.id}')">✕</button>
         </div>
@@ -1267,7 +1352,7 @@ function renderSettings(){
 function openModal(id){
   if(id==="addSkill"){
     const sel = document.getElementById("as-cat");
-    sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}">${c.label}</option>`).join("");
+    sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}">${esc(c.label)}</option>`).join("");
     document.getElementById("as-name").value="";
   }
   if(id==="addPerson"){
@@ -1283,7 +1368,7 @@ function openModal(id){
 
 function openAddSkillFor(catId){
   const sel = document.getElementById("as-cat");
-  sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}" ${c.id===catId?"selected":""}>${c.label}</option>`).join("");
+  sel.innerHTML = STATE.categories.map(c=>`<option value="${c.id}" ${c.id===catId?"selected":""}>${esc(c.label)}</option>`).join("");
   document.getElementById("as-name").value="";
   document.getElementById("modal-addSkill").classList.add("open");
 }
@@ -1396,6 +1481,10 @@ document.addEventListener("keydown",e=>{
 // ═══════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════
+// Allow Enter key to submit login form
+document.getElementById("loginEmail").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("loginPassword").focus(); });
+document.getElementById("loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+
 loadState();        // instant — from localStorage
 renderDashboard();  // renders immediately with local data
 publishKPI();
