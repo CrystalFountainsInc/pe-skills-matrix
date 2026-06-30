@@ -1174,7 +1174,7 @@ function renderTeamSummaryTable(){
       </thead>
       <tbody>
         ${STATE.team.map(p=>{
-          const pct=personScore(p);
+          const pct=personScore(p.id);
           const gaps=personGaps(p.id).length;
           const experts=getAllSkillNames().filter(sk=>getLevel(p.id,sk)===4).length;
           const col=colorForPct(pct);
@@ -1262,7 +1262,7 @@ function renderTeam(){
   }
   const el = document.getElementById("personCards");
   el.innerHTML = STATE.team.map(p=>{
-    const pct=personScore(p);
+    const pct=personScore(p.id);
     const gaps=personGaps(p.id).length;
     const col=colorForPct(pct);
     return `
@@ -1311,7 +1311,7 @@ function closePersonDetail(){
 }
 
 function renderPersonDetail(p){
-  const pct=personScore(p);
+  const pct=personScore(p.id);
   const col=colorForPct(pct);
   let html=`
     <div class="person-detail-header">
